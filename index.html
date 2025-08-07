@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Timezone Meeting Planner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #343434;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #232327 0%, #232327 100%);
+            padding: 30px;
+            color: white;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-item label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9rem;
+        }
+
+        .control-item select,
+        .control-item input {
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .control-item select:focus,
+        .control-item input:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: #ccc;
+            border-radius: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle.active {
+            background: #4facfe;
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle.active::after {
+            transform: translateX(24px);
+        }
+
+        .timezone-list {
+            padding: 20px 30px 30px;
+        }
+
+        .timezone-item {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            margin-bottom: 15px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border-left: 5px solid transparent;
+        }
+
+        .timezone-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+
+        .timezone-item.reference {
+            border-left-color: #4facfe;
+            background: linear-gradient(135deg, #f8fbff 0%, #e8f4fd 100%);
+        }
+
+        .timezone-item.selected {
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+
+        .timezone-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            cursor: pointer;
+        }
+
+        .timezone-name {
+            font-weight: 600;
+            color: #2c3e50;
+            min-width: 200px;
+        }
+
+        .timezone-time {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #4facfe;
+            font-family: 'Courier New', monospace;
+            min-width: 140px;
+        }
+
+        .timezone-date {
+            font-size: 0.9rem;
+            color: #6c757d;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .timezone-country {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .timezone-label {
+            color: #6c757d;
+            font-style: italic;
+            font-size: 0.95rem;
+        }
+
+        .timezone-remove {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            margin-left: 10px;
+        }
+
+        .timezone-remove:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+
+        .add-timezone-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .add-timezone-modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .modal-field {
+            margin-bottom: 20px;
+        }
+
+        .modal-field label {
+            display: block;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+
+        .modal-field select,
+        .modal-field input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .modal-field select:focus,
+        .modal-field input:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: #4facfe;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2196f3;
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .copy-section {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .copy-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .selected-count {
+            color: #6c757d;
+            font-weight: 600;
+        }
+
+        .reference-badge {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                padding: 20px;
+            }
+            
+            .control-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .timezone-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .timezone-name {
+                min-width: auto;
+            }
+            
+            .timezone-time {
+                font-size: 1.2rem;
+            }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌍 Meeting Planner</h1>
+            <p>Coordinate across timezones with ease</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <div class="control-item">
+                    <label for="referenceTimezone">Reference Timezone</label>
+                    <select id="referenceTimezone">
+                        <option value="America/Denver" selected>Denver (America/Denver)</option>
+                        <option value="Europe/Madrid">Barcelona (Europe/Madrid)</option>
+                        <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
+                        <option value="Europe/Rome">Milan (Europe/Rome)</option>
+                        <option value="Europe/Kyiv">Kyiv (Europe/Kyiv)</option>
+                        <option value="Asia/Colombo">Colombo (Asia/Colombo)</option>
+                        <option value="America/Guayaquil">Quito (America/Guayaquil)</option>
+                        <option value="America/Chicago">Chicago (CST/CDT)</option>
+                        <option value="Europe/London">London (GMT/BST)</option>
+                        <option value="Africa/Johannesburg">Cape Town (Africa/Johannesburg)</option>
+                        <option value="Europe/Warsaw">Warsaw (Europe/Warsaw)</option>
+                        <option value="America/New_York">New York (EST/EDT)</option>
+                        <option value="Europe/Paris">Paris (CET/CEST)</option>
+                        <option value="America/Chicago">Chicago (CST/CDT)</option>
+                        <option value="Europe/London">London (GMT/BST)</option>
+                        <option value="Europe/Paris">Paris (CET/CEST)</option>
+                        <option value="Asia/Tokyo">Tokyo (JST)</option>
+                        <option value="Asia/Shanghai">Shanghai (CST)</option>
+                        <option value="Asia/Kolkata">Mumbai (IST)</option>
+                        <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
+                        <option value="Pacific/Honolulu">Honolulu (HST)</option>
+                        <option value="America/Guayaquil">Quito (ECT)</option>
+                    </select>
+                </div>
+                <div class="control-item">
+                    <label for="referenceTime">Reference Time</label>
+                    <input type="time" id="referenceTime" value="08:10">
+                </div>
+                <div class="control-item">
+                    <label for="referenceDate">Date</label>
+                    <input type="date" id="referenceDate">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="toggle-container">
+                    <label>Show Team Labels</label>
+                    <div class="toggle active" id="labelsToggle"></div>
+                </div>
+                <button class="btn btn-primary" id="addTimezoneBtn">Add Timezone</button>
+            </div>
+        </div>
+
+        <div class="timezone-list" id="timezoneList">
+            <!-- Timezone items will be populated here -->
+        </div>
+
+        <!-- Add Timezone Modal -->
+        <div class="add-timezone-modal" id="addTimezoneModal">
+            <div class="modal-content">
+                <div class="modal-header">Add New Timezone</div>
+                <div class="modal-field">
+                    <label for="timezoneSelect">Select Timezone</label>
+                    <select id="timezoneSelect">
+                        <option value="">Choose a timezone...</option>
+                    </select>
+                </div>
+                <div class="modal-field">
+                    <label for="teamLabel">Team Label (Optional)</label>
+                    <input type="text" id="teamLabel" placeholder="e.g., Development Team, Sales Office (leave blank to use city name)">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="cancelAdd">Cancel</button>
+                    <button class="btn btn-primary" id="confirmAdd">Add Timezone</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="copy-section">
+            <div class="copy-controls">
+                <span class="selected-count" id="selectedCount">0 timezones selected</span>
+                <button class="btn btn-success" id="copySelected">Copy Selected Times</button>
+                <button class="btn btn-primary" id="selectAll">Select All</button>
+                <button class="btn btn-primary" id="clearSelection">Clear Selection</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification">
+        Copied to clipboard!
+    </div>
+
+    <script>
+        const defaultTimezones = [
+            { id: 'America/Denver', name: 'Denver', label: 'Management', country: 'United States' },
+            { id: 'Europe/Madrid', name: 'Barcelona', label: 'Design Team', country: 'Spain' },
+            { id: 'America/Los_Angeles', name: 'Los Angeles', label: 'Product Team', country: 'United States' },
+            { id: 'Europe/Rome', name: 'Milan', label: 'European Operations', country: 'Italy' },
+            { id: 'Europe/Kyiv', name: 'Kyiv', label: 'Development Team', country: 'Ukraine' },
+            { id: 'Asia/Colombo', name: 'Colombo', label: 'Support Team', country: 'Sri Lanka' },
+            { id: 'America/Guayaquil', name: 'Quito', label: 'Developers', country: 'Ecuador' },
+            { id: 'America/Chicago', name: 'Chicago', label: 'Operations', country: 'United States' },
+            { id: 'Europe/London', name: 'London', label: 'Marketing Team', country: 'United Kingdom' },
+            { id: 'Africa/Johannesburg', name: 'Cape Town', label: 'Regional Office', country: 'South Africa' },
+            { id: 'Europe/Warsaw', name: 'Warsaw', label: 'Engineering Team', country: 'Poland' }
+        ];
+
+        const availableTimezones = [
+            { id: 'Europe/Madrid', name: 'Barcelona', country: 'Spain' },
+            { id: 'America/New_York', name: 'New York', country: 'United States' },
+            { id: 'America/Los_Angeles', name: 'Los Angeles', country: 'United States' },
+            { id: 'America/Denver', name: 'Denver', country: 'United States' },
+            { id: 'America/Chicago', name: 'Chicago', country: 'United States' },
+            { id: 'Europe/London', name: 'London', country: 'United Kingdom' },
+            { id: 'Europe/Paris', name: 'Paris', country: 'France' },
+            { id: 'Asia/Tokyo', name: 'Tokyo', country: 'Japan' },
+            { id: 'Asia/Shanghai', name: 'Shanghai', country: 'China' },
+            { id: 'Asia/Kolkata', name: 'Mumbai', country: 'India' },
+            { id: 'Australia/Sydney', name: 'Sydney', country: 'Australia' },
+            { id: 'Pacific/Honolulu', name: 'Honolulu', country: 'United States' },
+            { id: 'America/Guayaquil', name: 'Quito', country: 'Ecuador' },
+            { id: 'Europe/Rome', name: 'Milan', country: 'Italy' },
+            { id: 'Europe/Kyiv', name: 'Kyiv', country: 'Ukraine' },
+            { id: 'Asia/Colombo', name: 'Colombo', country: 'Sri Lanka' },
+            { id: 'Europe/Warsaw', name: 'Warsaw', country: 'Poland' },
+            { id: 'Africa/Johannesburg', name: 'Cape Town', country: 'South Africa' },
+            { id: 'Europe/Amsterdam', name: 'Amsterdam', country: 'Netherlands' },
+            { id: 'Europe/Stockholm', name: 'Stockholm', country: 'Sweden' },
+            { id: 'Europe/Zurich', name: 'Zurich', country: 'Switzerland' },
+            { id: 'America/Toronto', name: 'Toronto', country: 'Canada' },
+            { id: 'America/Vancouver', name: 'Vancouver', country: 'Canada' },
+            { id: 'America/Mexico_City', name: 'Mexico City', country: 'Mexico' },
+            { id: 'America/Sao_Paulo', name: 'São Paulo', country: 'Brazil' },
+            { id: 'America/Buenos_Aires', name: 'Buenos Aires', country: 'Argentina' },
+            { id: 'America/Lima', name: 'Lima', country: 'Peru' },
+            { id: 'Asia/Singapore', name: 'Singapore', country: 'Singapore' },
+            { id: 'Asia/Bangkok', name: 'Bangkok', country: 'Thailand' },
+            { id: 'Asia/Dubai', name: 'Dubai', country: 'United Arab Emirates' },
+            { id: 'Asia/Seoul', name: 'Seoul', country: 'South Korea' },
+            { id: 'Asia/Hong_Kong', name: 'Hong Kong', country: 'Hong Kong' },
+            { id: 'Asia/Jakarta', name: 'Jakarta', country: 'Indonesia' },
+            { id: 'Asia/Manila', name: 'Manila', country: 'Philippines' },
+            { id: 'Asia/Tel_Aviv', name: 'Tel Aviv', country: 'Israel' },
+            { id: 'Australia/Melbourne', name: 'Melbourne', country: 'Australia' },
+            { id: 'Australia/Perth', name: 'Perth', country: 'Australia' },
+            { id: 'Pacific/Auckland', name: 'Auckland', country: 'New Zealand' },
+            { id: 'Pacific/Fiji', name: 'Suva', country: 'Fiji' },
+            { id: 'Africa/Cairo', name: 'Cairo', country: 'Egypt' },
+            { id: 'Africa/Lagos', name: 'Lagos', country: 'Nigeria' },
+            { id: 'Africa/Cape_Town', name: 'Cape Town', country: 'South Africa' },
+            { id: 'Africa/Nairobi', name: 'Nairobi', country: 'Kenya' },
+            { id: 'Atlantic/Reykjavik', name: 'Reykjavik', country: 'Iceland' },
+            { id: 'America/Phoenix', name: 'Phoenix', country: 'United States' },
+            { id: 'America/Anchorage', name: 'Anchorage', country: 'United States' }
+        ];
+
+        let sessionTimezones = [...defaultTimezones];
+
+        let selectedTimezones = new Set();
+        let showLabels = true;
+        let referenceTimezone = 'America/Denver';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set today's date as default
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('referenceDate').value = today;
+            
+            renderTimezones();
+            updateAllTimes();
+            
+            // Event listeners
+            document.getElementById('referenceTimezone').addEventListener('change', function() {
+                referenceTimezone = this.value;
+                updateAllTimes();
+            });
+            
+            document.getElementById('referenceTime').addEventListener('change', updateAllTimes);
+            document.getElementById('referenceDate').addEventListener('change', updateAllTimes);
+            
+            document.getElementById('labelsToggle').addEventListener('click', function() {
+                showLabels = !showLabels;
+                this.classList.toggle('active', showLabels);
+                updateTimezoneDisplay();
+            });
+            
+            document.getElementById('copySelected').addEventListener('click', copySelectedTimes);
+            document.getElementById('selectAll').addEventListener('click', selectAllTimezones);
+            document.getElementById('clearSelection').addEventListener('click', clearSelection);
+            
+            // Add timezone modal handlers
+            document.getElementById('addTimezoneBtn').addEventListener('click', showAddTimezoneModal);
+            document.getElementById('cancelAdd').addEventListener('click', hideAddTimezoneModal);
+            document.getElementById('confirmAdd').addEventListener('click', addNewTimezone);
+            
+            // Close modal when clicking outside
+            document.getElementById('addTimezoneModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    hideAddTimezoneModal();
+                }
+            });
+            
+            // Populate timezone dropdown
+            populateTimezoneDropdown();
+        });
+
+        function renderTimezones() {
+            const container = document.getElementById('timezoneList');
+            container.innerHTML = '';
+            
+            // Sort sessionTimezones alphabetically by city name
+            const sortedTimezones = [...sessionTimezones].sort((a, b) => a.name.localeCompare(b.name));
+            
+            sortedTimezones.forEach(tz => {
+                const item = document.createElement('div');
+                item.className = `timezone-item ${tz.id === referenceTimezone ? 'reference' : ''} ${selectedTimezones.has(tz.id) ? 'selected' : ''}`;
+                item.setAttribute('data-timezone', tz.id);
+                
+                const safeId = tz.id.replace(/\//g, '_');
+                
+                item.innerHTML = `
+                    <div class="timezone-info" onclick="toggleTimezone('${tz.id}')">
+                        <div>
+                            <div class="timezone-name">
+                                ${tz.name}
+                                ${tz.id === referenceTimezone ? '<span class="reference-badge">Reference</span>' : ''}
+                            </div>
+                            <div class="timezone-country">${tz.country}</div>
+                        </div>
+                        <div>
+                            <div class="timezone-time" id="time-${safeId}">--:-- --</div>
+                            <div class="timezone-date" id="date-${safeId}">--- --</div>
+                        </div>
+                        ${showLabels ? `<div class="timezone-label">${tz.label}</div>` : ''}
+                    </div>
+                    <button class="timezone-remove" onclick="event.stopPropagation(); removeTimezone('${tz.id}')" title="Remove timezone">×</button>
+                `;
+                
+                container.appendChild(item);
+            });
+            
+            updateSelectedCount();
+        }
+
+        function updateAllTimes() {
+            const referenceTime = document.getElementById('referenceTime').value;
+            const referenceDate = document.getElementById('referenceDate').value;
+            
+            if (!referenceTime || !referenceDate) return;
+            
+            // Create reference datetime
+            const referenceDateTime = new Date(`${referenceDate}T${referenceTime}:00`);
+            
+            sessionTimezones.forEach(tz => {
+                const convertedTime = convertTime(referenceDateTime, referenceTimezone, tz.id);
+                const safeId = tz.id.replace(/\//g, '_');
+                const timeElement = document.getElementById(`time-${safeId}`);
+                const dateElement = document.getElementById(`date-${safeId}`);
+                if (timeElement && dateElement) {
+                    timeElement.textContent = convertedTime.time;
+                    dateElement.textContent = convertedTime.date;
+                }
+            });
+        }
+
+        function updateTimezoneDisplay() {
+            sessionTimezones.forEach(tz => {
+                const item = document.querySelector(`[data-timezone="${tz.id}"]`);
+                if (item) {
+                    const labelElement = item.querySelector('.timezone-label');
+                    if (showLabels) {
+                        if (!labelElement) {
+                            const label = document.createElement('div');
+                            label.className = 'timezone-label';
+                            label.textContent = tz.label;
+                            item.querySelector('.timezone-info').appendChild(label);
+                        }
+                    } else {
+                        if (labelElement) {
+                            labelElement.remove();
+                        }
+                    }
+                }
+            });
+        }
+
+        function convertTime(referenceDateTime, fromTz, toTz) {
+            try {
+                // Convert reference time from reference timezone to UTC
+                const utcTime = new Date(referenceDateTime.toLocaleString("en-US", {timeZone: "UTC"}));
+                const referenceOffset = referenceDateTime.getTime() - new Date(referenceDateTime.toLocaleString("en-US", {timeZone: fromTz})).getTime();
+                const adjustedUtc = new Date(utcTime.getTime() + referenceOffset);
+                
+                // Convert from UTC to target timezone
+                const targetTime = new Date(adjustedUtc.toLocaleString("en-US", {timeZone: toTz}));
+                
+                const timeString = targetTime.toLocaleTimeString('en-US', {
+                    hour12: true,
+                    hour: 'numeric',
+                    minute: '2-digit'
+                });
+                
+                const dateString = targetTime.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric'
+                });
+                
+                return { time: timeString, date: dateString };
+            } catch (error) {
+                // Fallback method
+                const timeFormatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: toTz,
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                
+                const dateFormatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: toTz,
+                    month: 'short',
+                    day: 'numeric'
+                });
+                
+                return { 
+                    time: timeFormatter.format(referenceDateTime),
+                    date: dateFormatter.format(referenceDateTime)
+                };
+            }
+        }
+
+        function toggleTimezone(timezoneId) {
+            if (selectedTimezones.has(timezoneId)) {
+                selectedTimezones.delete(timezoneId);
+            } else {
+                selectedTimezones.add(timezoneId);
+            }
+            
+            // Update visual state
+            const item = document.querySelector(`[data-timezone="${timezoneId}"]`);
+            if (item) {
+                item.classList.toggle('selected', selectedTimezones.has(timezoneId));
+            }
+            
+            updateSelectedCount();
+        }
+
+        function selectAllTimezones() {
+            sessionTimezones.forEach(tz => selectedTimezones.add(tz.id));
+            renderTimezones();
+            updateAllTimes();
+        }
+
+        function clearSelection() {
+            selectedTimezones.clear();
+            renderTimezones();
+            updateAllTimes();
+        }
+
+        function updateSelectedCount() {
+            const count = selectedTimezones.size;
+            document.getElementById('selectedCount').textContent = `${count} timezone${count !== 1 ? 's' : ''} selected`;
+        }
+
+        function copyTimezone(timezoneId) {
+            const timezone = sessionTimezones.find(tz => tz.id === timezoneId);
+            const safeId = timezoneId.replace(/\//g, '_');
+            const timeElement = document.getElementById(`time-${safeId}`);
+            const dateElement = document.getElementById(`date-${safeId}`);
+            const time = timeElement.textContent;
+            const date = dateElement.textContent;
+            const label = showLabels ? ` (${timezone.label})` : '';
+            
+            const text = `${timezone.name}: ${time} ${date}${label}`;
+            copyToClipboard(text);
+        }
+
+        function copySelectedTimes() {
+            if (selectedTimezones.size === 0) {
+                alert('Please select at least one timezone');
+                return;
+            }
+            
+            const date = document.getElementById('referenceDate').value;
+            const formattedDate = new Date(date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            let text = `Meeting Times - ${formattedDate}\n\n`;
+            
+            sessionTimezones.forEach(tz => {
+                if (selectedTimezones.has(tz.id)) {
+                    const safeId = tz.id.replace(/\//g, '_');
+                    const timeElement = document.getElementById(`time-${safeId}`);
+                    const dateElement = document.getElementById(`date-${safeId}`);
+                    const time = timeElement.textContent;
+                    const date = dateElement.textContent;
+                    const label = showLabels ? ` (${tz.label})` : '';
+                    const isReference = tz.id === referenceTimezone ? ' [Reference]' : '';
+                    
+                    text += `${tz.name}: ${time} ${date}${label}${isReference}\n`;
+                }
+            });
+            
+            copyToClipboard(text);
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification();
+            }).catch(err => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showNotification();
+            });
+        }
+
+        function showNotification() {
+            const notification = document.getElementById('notification');
+            notification.classList.add('show');
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2000);
+        }
+
+        // Timezone management functions
+        function populateTimezoneDropdown() {
+            const select = document.getElementById('timezoneSelect');
+            // Sort available timezones alphabetically by city name
+            const sortedTimezones = [...availableTimezones].sort((a, b) => a.name.localeCompare(b.name));
+            
+            sortedTimezones.forEach(tz => {
+                const option = document.createElement('option');
+                option.value = tz.id;
+                option.textContent = `${tz.name}, ${tz.country} (${tz.id})`;
+                select.appendChild(option);
+            });
+        }
+
+        function showAddTimezoneModal() {
+            document.getElementById('addTimezoneModal').classList.add('show');
+            document.getElementById('timezoneSelect').value = '';
+            document.getElementById('teamLabel').value = '';
+        }
+
+        function hideAddTimezoneModal() {
+            document.getElementById('addTimezoneModal').classList.remove('show');
+        }
+
+        function addNewTimezone() {
+            const selectedTimezoneId = document.getElementById('timezoneSelect').value;
+            const teamLabel = document.getElementById('teamLabel').value.trim();
+            
+            if (!selectedTimezoneId) {
+                alert('Please select a timezone');
+                return;
+            }
+            
+            // Check if timezone already exists with the same label (or both empty)
+            if (sessionTimezones.some(tz => tz.id === selectedTimezoneId && tz.label === teamLabel)) {
+                alert('This timezone with this label already exists');
+                return;
+            }
+            
+            const selectedTimezone = availableTimezones.find(tz => tz.id === selectedTimezoneId);
+            
+            const newTimezone = {
+                id: selectedTimezoneId,
+                name: selectedTimezone.name,
+                label: teamLabel || selectedTimezone.name, // Use city name if no label provided
+                country: selectedTimezone.country
+            };
+            
+            sessionTimezones.push(newTimezone);
+            renderTimezones();
+            updateAllTimes();
+            hideAddTimezoneModal();
+            
+            // Show success notification
+            const notification = document.getElementById('notification');
+            notification.textContent = `Added ${selectedTimezone.name}!`;
+            showNotification();
+            setTimeout(() => {
+                notification.textContent = 'Copied to clipboard!';
+            }, 2000);
+        }
+
+        function removeTimezone(timezoneId) {
+            // Don't allow removing if it would leave us with less than 1 timezone
+            if (sessionTimezones.length <= 1) {
+                alert('You must keep at least one timezone');
+                return;
+            }
+            
+            // If removing the reference timezone, set a new one
+            if (timezoneId === referenceTimezone && sessionTimezones.length > 1) {
+                const newReference = sessionTimezones.find(tz => tz.id !== timezoneId);
+                referenceTimezone = newReference.id;
+                document.getElementById('referenceTimezone').value = referenceTimezone;
+            }
+            
+            // Find the first occurrence of this timezone ID and remove it
+            const index = sessionTimezones.findIndex(tz => tz.id === timezoneId);
+            if (index !== -1) {
+                const removedTimezone = sessionTimezones[index];
+                sessionTimezones.splice(index, 1);
+                selectedTimezones.delete(timezoneId);
+                renderTimezones();
+                updateAllTimes();
+                
+                // Show success notification
+                const notification = document.getElementById('notification');
+                notification.textContent = `Removed ${removedTimezone.name}!`;
+                showNotification();
+                setTimeout(() => {
+                    notification.textContent = 'Copied to clipboard!';
+                }, 2000);
+            }
+        }
+    </script>
+</body>
+</html>
