@@ -709,28 +709,58 @@
 
         function convertTime(referenceDateTime, fromTz, toTz) {
             try {
-                // Convert reference time from reference timezone to UTC
-                const utcTime = new Date(referenceDateTime.toLocaleString("en-US", {timeZone: "UTC"}));
-                const referenceOffset = referenceDateTime.getTime() - new Date(referenceDateTime.toLocaleString("en-US", {timeZone: fromTz})).getTime();
-                const adjustedUtc = new Date(utcTime.getTime() + referenceOffset);
+                // If converting to the same timezone as reference, return the reference time
+                if (fromTz === toTz) {
+                    const timeString = referenceDateTime.toLocaleTimeString('en-US', {
+                        hour12: true,
+                        hour: 'numeric',
+                        minute: '2-digit'
+                    });
+                    
+                    const dateString = referenceDateTime.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                    
+                    return { time: timeString, date: dateString };
+                }
                 
-                // Convert from UTC to target timezone
-                const targetTime = new Date(adjustedUtc.toLocaleString("en-US", {timeZone: toTz}));
+                // Create a date in the reference timezone
+                const referenceTimeString = referenceDateTime.toISOString().slice(0, 19);
+                const referenceInUTC = new Date(referenceTimeString + 'Z');
                 
-                const timeString = targetTime.toLocaleTimeString('en-US', {
+                // Get the offset difference between the reference timezone and target timezone
+                const referenceOffset = new Date().toLocaleString('en-US', {timeZone: fromTz});
+                const targetTime = new Date().toLocaleString('en-US', {timeZone: toTz});
+                
+                // Use a more reliable method
+                const baseDate = new Date('2025-01-01T12:00:00');
+                const referenceTime = new Date(baseDate.toLocaleString('en-US', {timeZone: fromTz}));
+                const targetBaseTime = new Date(baseDate.toLocaleString('en-US', {timeZone: toTz}));
+                const offsetDiff = targetBaseTime.getTime() - referenceTime.getTime();
+                
+                const convertedDateTime = new Date(referenceDateTime.getTime() + offsetDiff);
+                
+                const timeString = convertedDateTime.toLocaleTimeString('en-US', {
                     hour12: true,
                     hour: 'numeric',
                     minute: '2-digit'
                 });
                 
-                const dateString = targetTime.toLocaleDateString('en-US', {
+                const dateString = convertedDateTime.toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric'
                 });
                 
                 return { time: timeString, date: dateString };
             } catch (error) {
-                // Fallback method
+                // Fallback method using Intl
+                const referenceDate = referenceDateTime.toISOString().split('T')[0];
+                const referenceTime = referenceDateTime.toISOString().split('T')[1].slice(0, 5);
+                
+                // Create a temporary date for conversion
+                const tempDate = new Date(`${referenceDate}T${referenceTime}:00`);
+                
                 const timeFormatter = new Intl.DateTimeFormat('en-US', {
                     timeZone: toTz,
                     hour: 'numeric',
@@ -745,8 +775,8 @@
                 });
                 
                 return { 
-                    time: timeFormatter.format(referenceDateTime),
-                    date: dateFormatter.format(referenceDateTime)
+                    time: timeFormatter.format(tempDate),
+                    date: dateFormatter.format(tempDate)
                 };
             }
         }
