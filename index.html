@@ -444,20 +444,16 @@
                         <option value="Europe/Warsaw">Warsaw (Europe/Warsaw)</option>
                         <option value="America/New_York">New York (EST/EDT)</option>
                         <option value="Europe/Paris">Paris (CET/CEST)</option>
-                        <option value="America/Chicago">Chicago (CST/CDT)</option>
-                        <option value="Europe/London">London (GMT/BST)</option>
-                        <option value="Europe/Paris">Paris (CET/CEST)</option>
                         <option value="Asia/Tokyo">Tokyo (JST)</option>
                         <option value="Asia/Shanghai">Shanghai (CST)</option>
                         <option value="Asia/Kolkata">Mumbai (IST)</option>
                         <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
                         <option value="Pacific/Honolulu">Honolulu (HST)</option>
-                        <option value="America/Guayaquil">Quito (ECT)</option>
                     </select>
                 </div>
                 <div class="control-item">
                     <label for="referenceTime">Reference Time</label>
-                    <input type="time" id="referenceTime" value="08:10">
+                    <input type="time" id="referenceTime">
                 </div>
                 <div class="control-item">
                     <label for="referenceDate">Date</label>
@@ -475,10 +471,8 @@
         </div>
 
         <div class="timezone-list" id="timezoneList">
-            <!-- Timezone items will be populated here -->
         </div>
 
-        <!-- Add Timezone Modal -->
         <div class="add-timezone-modal" id="addTimezoneModal">
             <div class="modal-content">
                 <div class="modal-header">Add New Timezone</div>
@@ -548,6 +542,7 @@
             { id: 'Asia/Colombo', name: 'Colombo', country: 'Sri Lanka' },
             { id: 'Europe/Warsaw', name: 'Warsaw', country: 'Poland' },
             { id: 'Africa/Johannesburg', name: 'Cape Town', country: 'South Africa' },
+            { id: 'Europe/Berlin', name: 'Berlin', country: 'Germany' },
             { id: 'Europe/Amsterdam', name: 'Amsterdam', country: 'Netherlands' },
             { id: 'Europe/Stockholm', name: 'Stockholm', country: 'Sweden' },
             { id: 'Europe/Zurich', name: 'Zurich', country: 'Switzerland' },
@@ -571,7 +566,6 @@
             { id: 'Pacific/Fiji', name: 'Suva', country: 'Fiji' },
             { id: 'Africa/Cairo', name: 'Cairo', country: 'Egypt' },
             { id: 'Africa/Lagos', name: 'Lagos', country: 'Nigeria' },
-            { id: 'Africa/Cape_Town', name: 'Cape Town', country: 'South Africa' },
             { id: 'Africa/Nairobi', name: 'Nairobi', country: 'Kenya' },
             { id: 'Atlantic/Reykjavik', name: 'Reykjavik', country: 'Iceland' },
             { id: 'America/Phoenix', name: 'Phoenix', country: 'United States' },
@@ -584,16 +578,18 @@
         let showLabels = true;
         let referenceTimezone = 'America/Denver';
 
-        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            // Set today's date as default
-            const today = new Date().toISOString().split('T')[0];
+            // Set today's date and current device time as defaults
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            const currentHours = String(now.getHours()).padStart(2, '0');
+            const currentMinutes = String(now.getMinutes()).padStart(2, '0');
             document.getElementById('referenceDate').value = today;
+            document.getElementById('referenceTime').value = `${currentHours}:${currentMinutes}`;
             
             renderTimezones();
             updateAllTimes();
             
-            // Event listeners
             document.getElementById('referenceTimezone').addEventListener('change', function() {
                 referenceTimezone = this.value;
                 updateAllTimes();
@@ -612,19 +608,16 @@
             document.getElementById('selectAll').addEventListener('click', selectAllTimezones);
             document.getElementById('clearSelection').addEventListener('click', clearSelection);
             
-            // Add timezone modal handlers
             document.getElementById('addTimezoneBtn').addEventListener('click', showAddTimezoneModal);
             document.getElementById('cancelAdd').addEventListener('click', hideAddTimezoneModal);
             document.getElementById('confirmAdd').addEventListener('click', addNewTimezone);
             
-            // Close modal when clicking outside
             document.getElementById('addTimezoneModal').addEventListener('click', function(e) {
                 if (e.target === this) {
                     hideAddTimezoneModal();
                 }
             });
             
-            // Populate timezone dropdown
             populateTimezoneDropdown();
         });
 
@@ -632,7 +625,6 @@
             const container = document.getElementById('timezoneList');
             container.innerHTML = '';
             
-            // Sort sessionTimezones alphabetically by city name
             const sortedTimezones = [...sessionTimezones].sort((a, b) => a.name.localeCompare(b.name));
             
             sortedTimezones.forEach(tz => {
@@ -672,7 +664,6 @@
             
             if (!referenceTime || !referenceDate) return;
             
-            // Create reference datetime
             const referenceDateTime = new Date(`${referenceDate}T${referenceTime}:00`);
             
             sessionTimezones.forEach(tz => {
@@ -710,75 +701,57 @@
 
         function convertTime(referenceDateTime, fromTz, toTz) {
             try {
-                // If converting to the same timezone as reference, return the reference time
+                // If converting to the same timezone, return the input time directly
                 if (fromTz === toTz) {
-                    const timeString = referenceDateTime.toLocaleTimeString('en-US', {
-                        hour12: true,
-                        hour: 'numeric',
-                        minute: '2-digit'
-                    });
-                    
-                    const dateString = referenceDateTime.toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric'
-                    });
-                    
-                    return { time: timeString, date: dateString };
+                    return {
+                        time: referenceDateTime.toLocaleTimeString('en-US', {
+                            hour12: true, hour: 'numeric', minute: '2-digit'
+                        }),
+                        date: referenceDateTime.toLocaleDateString('en-US', {
+                            month: 'short', day: 'numeric'
+                        })
+                    };
                 }
-                
-                // Create a date in the reference timezone
-                const referenceTimeString = referenceDateTime.toISOString().slice(0, 19);
-                const referenceInUTC = new Date(referenceTimeString + 'Z');
-                
-                // Get the offset difference between the reference timezone and target timezone
-                const referenceOffset = new Date().toLocaleString('en-US', {timeZone: fromTz});
-                const targetTime = new Date().toLocaleString('en-US', {timeZone: toTz});
-                
-                // Use a more reliable method
-                const baseDate = new Date('2025-01-01T12:00:00');
-                const referenceTime = new Date(baseDate.toLocaleString('en-US', {timeZone: fromTz}));
-                const targetBaseTime = new Date(baseDate.toLocaleString('en-US', {timeZone: toTz}));
-                const offsetDiff = targetBaseTime.getTime() - referenceTime.getTime();
-                
+
+                // Use Intl.DateTimeFormat to get date/time parts in each timezone
+                // This correctly handles DST for the specific date selected
+                const refParts = new Intl.DateTimeFormat('en-US', {
+                    timeZone: fromTz,
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    hour12: false
+                }).formatToParts(referenceDateTime);
+
+                const tgtParts = new Intl.DateTimeFormat('en-US', {
+                    timeZone: toTz,
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    hour12: false
+                }).formatToParts(referenceDateTime);
+
+                function partsToDate(parts) {
+                    const p = {};
+                    parts.forEach(({type, value}) => p[type] = value);
+                    const h = p.hour === '24' ? '00' : p.hour;
+                    return new Date(`${p.year}-${p.month}-${p.day}T${h}:${p.minute}:${p.second}`);
+                }
+
+                const refLocal = partsToDate(refParts);
+                const tgtLocal = partsToDate(tgtParts);
+                const offsetDiff = tgtLocal.getTime() - refLocal.getTime();
+
                 const convertedDateTime = new Date(referenceDateTime.getTime() + offsetDiff);
-                
-                const timeString = convertedDateTime.toLocaleTimeString('en-US', {
-                    hour12: true,
-                    hour: 'numeric',
-                    minute: '2-digit'
-                });
-                
-                const dateString = convertedDateTime.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric'
-                });
-                
-                return { time: timeString, date: dateString };
-            } catch (error) {
-                // Fallback method using Intl
-                const referenceDate = referenceDateTime.toISOString().split('T')[0];
-                const referenceTime = referenceDateTime.toISOString().split('T')[1].slice(0, 5);
-                
-                // Create a temporary date for conversion
-                const tempDate = new Date(`${referenceDate}T${referenceTime}:00`);
-                
-                const timeFormatter = new Intl.DateTimeFormat('en-US', {
-                    timeZone: toTz,
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                });
-                
-                const dateFormatter = new Intl.DateTimeFormat('en-US', {
-                    timeZone: toTz,
-                    month: 'short',
-                    day: 'numeric'
-                });
-                
-                return { 
-                    time: timeFormatter.format(tempDate),
-                    date: dateFormatter.format(tempDate)
+
+                return {
+                    time: convertedDateTime.toLocaleTimeString('en-US', {
+                        hour12: true, hour: 'numeric', minute: '2-digit'
+                    }),
+                    date: convertedDateTime.toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric'
+                    })
                 };
+            } catch (error) {
+                return { time: 'Error', date: '' };
             }
         }
 
@@ -789,7 +762,6 @@
                 selectedTimezones.add(timezoneId);
             }
             
-            // Update visual state
             const item = document.querySelector(`[data-timezone="${timezoneId}"]`);
             if (item) {
                 item.classList.toggle('selected', selectedTimezones.has(timezoneId));
@@ -865,7 +837,6 @@
             navigator.clipboard.writeText(text).then(() => {
                 showNotification();
             }).catch(err => {
-                // Fallback for older browsers
                 const textArea = document.createElement('textarea');
                 textArea.value = text;
                 document.body.appendChild(textArea);
@@ -884,10 +855,8 @@
             }, 2000);
         }
 
-        // Timezone management functions
         function populateTimezoneDropdown() {
             const select = document.getElementById('timezoneSelect');
-            // Sort available timezones alphabetically by city name
             const sortedTimezones = [...availableTimezones].sort((a, b) => a.name.localeCompare(b.name));
             
             sortedTimezones.forEach(tz => {
@@ -917,7 +886,6 @@
                 return;
             }
             
-            // Check if timezone already exists with the same label (or both empty)
             if (sessionTimezones.some(tz => tz.id === selectedTimezoneId && tz.label === teamLabel)) {
                 alert('This timezone with this label already exists');
                 return;
@@ -928,7 +896,7 @@
             const newTimezone = {
                 id: selectedTimezoneId,
                 name: selectedTimezone.name,
-                label: teamLabel || selectedTimezone.name, // Use city name if no label provided
+                label: teamLabel || selectedTimezone.name,
                 country: selectedTimezone.country
             };
             
@@ -937,7 +905,6 @@
             updateAllTimes();
             hideAddTimezoneModal();
             
-            // Show success notification
             const notification = document.getElementById('notification');
             notification.textContent = `Added ${selectedTimezone.name}!`;
             showNotification();
@@ -947,20 +914,17 @@
         }
 
         function removeTimezone(timezoneId) {
-            // Don't allow removing if it would leave us with less than 1 timezone
             if (sessionTimezones.length <= 1) {
                 alert('You must keep at least one timezone');
                 return;
             }
             
-            // If removing the reference timezone, set a new one
             if (timezoneId === referenceTimezone && sessionTimezones.length > 1) {
                 const newReference = sessionTimezones.find(tz => tz.id !== timezoneId);
                 referenceTimezone = newReference.id;
                 document.getElementById('referenceTimezone').value = referenceTimezone;
             }
             
-            // Find the first occurrence of this timezone ID and remove it
             const index = sessionTimezones.findIndex(tz => tz.id === timezoneId);
             if (index !== -1) {
                 const removedTimezone = sessionTimezones[index];
@@ -969,7 +933,6 @@
                 renderTimezones();
                 updateAllTimes();
                 
-                // Show success notification
                 const notification = document.getElementById('notification');
                 notification.textContent = `Removed ${removedTimezone.name}!`;
                 showNotification();
